@@ -8,16 +8,19 @@ class Sound(commands.Cog):
   def __init__(self, client):
     self.client = client
     self.queues = {}
+    self.currents = {}
   
   def check_queue(self,voice,id):
     if self.queues[id] and voice:
       song = self.queues[id].pop(0)
+      self.currents[id] = song
       voice.play(FFmpegPCMAudio(song), after = lambda _: self.check_queue(voice,id)) 
       #_ is the error parameter needed for after finalizer
     elif not self.queues[id] and (not voice or not voice.is_playing()):
       async def waitingForDC():
         await asyncio.sleep(3)
         if not self.queues[id] and (not voice or not voice.is_playing()):
+          self.currents[id] = None
           await voice.disconnect()
       coro = waitingForDC()
       fut = asyncio.run_coroutine_threadsafe(coro, self.client.loop)
@@ -40,22 +43,26 @@ class Sound(commands.Cog):
         #await ctx.send("added song to queue")
       elif voice.is_connected():
         self.queues[guild_id] = []
+        self.currents[guild_id] = song
         voice.play(FFmpegPCMAudio(song), after = lambda _: self.check_queue(voice,guild_id))
     else:
       await message.channel.send('You have to be connected to the channel to use that command')
 
-  @commands.command(pass_context = True, help = 'Shows queued sounds')
+  @commands.command(pass_context = True, help = 'Shows queued sounds and current sound')
   async def queue(self,ctx):
     guild_id = ctx.message.guild.id
-    if guild_id in self.queues and self.queues[guild_id]:
-      message = []
-      for song in self.queues[guild_id]:
-        message.append(song[7:].split('.')[0] + '\n')
+    if guild_id in self.currents and self.currents[guild_id]:
+      currentSong = self.currents[guild_id]
       embed=discord.Embed(color=0xADD8E6)
-      embed.add_field(name = 'Current Queue', value=''.join(message), inline=False)
+      embed.add_field(name = 'Current Song', value=currentSong[7:].split('.')[0], inline=False)
+      message = []
+      if guild_id in self.queues and self.queues[guild_id]:
+        for song in self.queues[guild_id]:
+          message.append(song[7:].split('.')[0] + '\n')
+        embed.add_field(name = 'Current Queue', value=''.join(message), inline=False)
       await ctx.send(embed=embed)  
     else:
-      await ctx.send('There is currently nothing in queue')
+      await ctx.send('There is currently nothing playing.')
 
   @commands.command(help = 'Skips current song')
   async def skip(self,ctx):
