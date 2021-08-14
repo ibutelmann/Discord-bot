@@ -55,8 +55,8 @@ class Sound(commands.Cog):
       currentSong = self.currents[guild_id]
       embed=discord.Embed(color=0xADD8E6)
       embed.add_field(name = 'Current Song', value=currentSong[7:].split('.')[0], inline=False)
-      message = []
       if guild_id in self.queues and self.queues[guild_id]:
+        message = []
         for song in self.queues[guild_id]:
           message.append(song[7:].split('.')[0] + '\n')
         embed.add_field(name = 'Current Queue', value=''.join(message), inline=False)
